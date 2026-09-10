@@ -1,0 +1,43 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jobflow-app
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - .:/var/www/html
+      - jobflow_vendor:/var/www/html/vendor
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - jobflow
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: jobflow-postgres
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-jobflow}
+      POSTGRES_USER: ${DB_USERNAME:-jobflow}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      - "${DB_FORWARD_PORT:-5432}:5432"
+    volumes:
+      - jobflow_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-jobflow} -d ${DB_DATABASE:-jobflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - jobflow
+
+volumes:
+  jobflow_vendor:
+  jobflow_postgres:
+
+networks:
+  jobflow:
+    driver: bridge
